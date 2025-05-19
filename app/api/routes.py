@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import TypedDict
+from typing import TypedDict, List
 from db.ops import PostgresDB
 
 router = APIRouter()
@@ -15,6 +15,12 @@ db = PostgresDB(
 class NotificationRequest(BaseModel):
     uid: str
     body: str
+
+class NotificationResponse(BaseModel):
+    id: int
+    uid: str
+    body: str
+    created_at: str
 
 @router.post("/notifications", status_code=201)
 async def create_notification(notification: NotificationRequest):
@@ -43,5 +49,20 @@ async def create_notification(notification: NotificationRequest):
             return {"message": "Notification created successfully", "data": result}
         else:
             raise HTTPException(status_code=500, detail="Failed to create notification")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/users/{uid}/notifications", response_model=List[NotificationResponse])
+async def get_user_notifications(uid: str):
+    try:
+        result = db.select(
+            table="notifications",
+            conditions={"uid": uid},
+            fields=["id", "uid", "body", "created_at"]
+        )
+        
+        if result:
+            return result
+        return []
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
